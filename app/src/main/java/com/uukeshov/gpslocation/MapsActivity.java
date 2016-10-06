@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -20,8 +21,16 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 
 public class MapsActivity extends FragmentActivity implements
         OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, LocationListener {
@@ -30,6 +39,10 @@ public class MapsActivity extends FragmentActivity implements
     private GoogleApiClient mGoogleApiClient;
     private PolylineOptions mPolylineOptions;
     private LatLng mLatLng;
+    private Integer busPosition = 0;
+    private LatLngModel latLng;
+    private MyTask mt;
+    private Marker start;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +53,10 @@ public class MapsActivity extends FragmentActivity implements
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
         checkPermissionForLocation();
+        latLng = new LatLngModel();
+        latLng.addLatLng();
+        mt = new MyTask();
+
     }
 
     @Override
@@ -50,6 +67,10 @@ public class MapsActivity extends FragmentActivity implements
             return;
         }
         mGoogleMap.setMyLocationEnabled(true);
+        addLine();
+        addMarker();
+        doSomethingRepeatedly();
+        //mt.execute();
     }
 
     public void requestPermissionForLocation() {
@@ -123,8 +144,8 @@ public class MapsActivity extends FragmentActivity implements
 
     private LocationRequest createLocationRequest() {
         LocationRequest mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(10000);
-        mLocationRequest.setFastestInterval(5000);
+        mLocationRequest.setInterval(Constants.TIMEINTERVAL);
+        mLocationRequest.setFastestInterval(Constants.DISTANCENTERVAL);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         return mLocationRequest;
     }
@@ -140,6 +161,84 @@ public class MapsActivity extends FragmentActivity implements
         if (isGranted) {
             reloadActivity();
         }
+    }
 
+    private void addLine() {
+        Polyline line = mGoogleMap.addPolyline(new PolylineOptions()
+                .add(new LatLng(42.877526, 74.574913), new LatLng(42.876331, 74.596027))
+                .add(new LatLng(42.876331, 74.596027), new LatLng(42.874885, 74.637054))
+                .add(new LatLng(42.874885, 74.637054), new LatLng(42.858047, 74.636623))
+                .add(new LatLng(42.858047, 74.636623), new LatLng(42.854985, 74.634992))
+                .add(new LatLng(42.854985, 74.634992), new LatLng(42.853288, 74.633903))
+                .add(new LatLng(42.853288, 74.633903), new LatLng(42.846029, 74.634771))
+                .add(new LatLng(42.846029, 74.634771), new LatLng(42.841651, 74.636404))
+                .width(10)
+                .color(Color.RED));
+    }
+
+    private void addMarker() {
+        Marker start = mGoogleMap.addMarker(new MarkerOptions()
+                .position(new LatLng(42.877526, 74.574913))
+                .title("Начало маршрута")
+                .snippet("Fake route: 1232"));
+        Marker end = mGoogleMap.addMarker(new MarkerOptions()
+                .position(new LatLng(42.841651, 74.636404))
+                .title("Конец маршрута")
+                .snippet("Fake route: 1232"));
+    }
+
+    private void busMarker() {
+        if (getBusPosition() <= 7) {
+            mGoogleMap.clear();
+            addLine();
+            addMarker();
+            start = mGoogleMap.addMarker(new MarkerOptions()
+                    .position(latLng.getLatLngItem(getBusPosition()))
+                   .icon(BitmapDescriptorFactory.fromResource(R.drawable.quantum_ic_play_arrow_grey600_36))
+                    .title("Маршрутка тут!")
+                    .snippet("Fake route: 1232"));
+            setBusPosition(getBusPosition() + 1);
+        } else {
+            setBusPosition(0);
+        }
+    }
+
+    public Integer getBusPosition() {
+        return busPosition;
+    }
+
+    public void setBusPosition(Integer busPosition) {
+        this.busPosition = busPosition;
+    }
+
+    private void doSomethingRepeatedly() {
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            public void run() {
+                try {
+                    new MyTask().execute();
+                } catch (Exception e) {
+                }
+            }
+        }, 0, 10000);
+    }
+
+    class MyTask extends AsyncTask<Void, Void, Void> {
+        @Override
+        protected Void doInBackground(Void... params) {
+            try {
+                TimeUnit.SECONDS.sleep(5);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+
+        @Override
+        protected void onPostExecute(Void result) {
+            super.onPostExecute(result);
+            busMarker();
+        }
     }
 }
