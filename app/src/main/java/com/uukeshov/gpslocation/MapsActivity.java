@@ -188,7 +188,7 @@ public class MapsActivity extends FragmentActivity implements
     }
 
     private void busMarker() {
-        if (getBusPosition() <= 7) {
+        if (getBusPosition() <= 5) {
             mGoogleMap.clear();
             addLine();
             addMarker();
